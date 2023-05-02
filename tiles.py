@@ -322,9 +322,9 @@ class TimedNonInteractable(NonInteractable):
 
     remove_signal = pyqtSignal(int, int)
 
-    def __init__(self, x, y, tile_width, tile_height, ticks_for_fire_to_disappear, scale_icon=None):
+    def __init__(self, x, y, tile_width, tile_height, ticks_to_disappear, scale_icon=None):
         super().__init__(x, y, tile_width, tile_height, scale_icon=scale_icon)
-        self.ticks_left = ticks_for_fire_to_disappear
+        self.ticks_left = ticks_to_disappear
 
     def count_down(self):
 
@@ -342,7 +342,7 @@ class Fire(TimedNonInteractable):
     path_to_icon = 'images/fire.jpg'
 
     def __init__(self, x, y, tile_width, tile_height, ticks_for_fire_to_disappear):
-        super().__init__(x, y, tile_width, tile_height, ticks_for_fire_to_disappear)
+        super().__init__(x, y, tile_width, tile_height, ticks_to_disappear=ticks_for_fire_to_disappear)
 
 
 class WaterFountain(NonInteractable):

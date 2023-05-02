@@ -607,7 +607,11 @@ class Inventory(QWidget):
                 else:
                     # We clicked on a tool and a resource (in either order), do the combining
 
-                    result = tool_item.process(self.skills, resource_item, self.game_display_index.get_last_viewed_map())
+                    result = tool_item.process(
+                        skills=self.skills,
+                        resource=resource_item,
+                        visible_map=self.game_display_index.get_last_viewed_map()
+                    )
 
                     if result['success']:
                         # We could combine the items, now see if we need to remove / replace the resource

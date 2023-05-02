@@ -36,10 +36,20 @@ class Map(QWidget):
         # All coordinates (tiles access, calculating distances, etc.) done wrt. `self.map`, i.e. absolute coordinates
         # .x and .y values of the tile objects are kept in sync with the index into where they are stored in `self.map`
         # We visually display a window around player, `self.player_window`, which is a grid layout
-        # We re-draw this window grid layout any time tiles change, e.g. player moves,
-        # and the absolute coordinates are mapped to grid coordinates here and here only
+        # We re-draw this window grid layout any time visible tiles change, examples:
+        # - player moves within the map it's already on
+        # - player moves into a new map
+        # - NPC moves within/out of/in to the player window
+        # etc.
+        # We only re-draw the visible layout window when it's visually necessary. For example, we don't redraw the
+        # window around the player if the map changed (NPC moved or fire went out) on the other side of the map.
+        # This does mean the window over the map and the underlying map of tiles can get out of sync,
+        # for example if player moves to another map we don't update widget grid's layout, only when the
+        # player comes back do we update it.
+        # The absolute map coordinates are mapped to grid coordinates when we redraw, and here only - any other time
+        # all coordinates are done in terms of absolute on the whole map
         # If we get to the boundary of the map and there isn't enough tiles around player to centre the player,
-        # take a window number of tiles from boundary
+        # take a window number of tiles from map boundary
 
         self.map = []
         self.map_rows = loaded_map['total']['height']
@@ -62,7 +72,7 @@ class Map(QWidget):
         self.tile_width = int(self.width/self.window_cols)
         self.tile_height = int(self.height/self.window_rows)
 
-        # Boolean as to whether we can light fires on this map
+        # Boolean describing if we can light fires on this map
         # E.g. we don't want to light fires in a cave, but we do on the surface
         self.can_light_fires_on_map = loaded_map['can_light_fires']
 
@@ -480,7 +490,10 @@ class Map(QWidget):
 
     def can_light_fire(self):
         # To light a fire we move to the right after lighting it
-        # We can only light one if there is an empty slot to the right (including checking not on far-right border)
+        # We can only light one if:
+        # - there is an empty slot to the right
+        # - we are not on the far-right border
+        # - the specification for this map (in json) allows fires to be lit, e.g. not in caves, but on surface
 
         assert self.player is not None
 

@@ -18,7 +18,7 @@ class StatusBar(QLabel):
         self.setText("Welcome!")
 
         font = self.font()
-        font.setPointSize(15)
+        font.setPointSize(20)
         self.setFont(font)
 
         self.setAlignment(Qt.AlignHCenter | Qt.AlignBottom)
