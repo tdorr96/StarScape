@@ -1,0 +1,21 @@
+{
+  "total": {
+    "width": 7,
+    "height": 7
+  },
+  "window": {
+    "width": 7,
+    "height": 7
+  },
+  "can_light_fires": false,
+  "background_color": "grey",
+  "map": [
+    ["", "BC", "GR", "", "GR", "", ""],
+    ["GR", "", "", "", "", "", "GR"],
+    ["GR", "", "", "", "", "", ""],
+    ["", "", "", "LUP:cave:5:7", "GR", "GR", "GR"],
+    ["", "GR", "", "", "", "", ""],
+    ["GR", "", "", "GR", "", "GR", ""],
+    ["GR", "GR", "", "", "", "", ""]
+  ]
+}
