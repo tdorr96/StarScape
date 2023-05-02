@@ -39,6 +39,6 @@ ESC or the close button.
 * <b>Combat skill</b>: Equip melee or ranged weapons to fight moving monsters. Weapons can be bought 
 from shops, or made with smithing/fletching.
 * <b> Thieving skill</b>: Thieve gold from NPCs or items from stalls and shopkeepers.
-* <b> Improve shop mechanics </b>: Design shops to have a fixed set of items that they can stock (e.g. cannot buy/sell logs from/to a blacksmith); give stocked items a base amount and base price, so if you oversell items will depopulate from the stock after a certain amount of game ticks, and the price decreases as you sell past the base amount.
+* <b> Improve shop mechanics </b>: Design shops to have a fixed set of items that they can stock (e.g. cannot buy/sell logs from/to a blacksmith); give stocked items a base amount and base price, so if you oversell items will depopulate from the stock after a certain amount of game ticks, and the sell price decreases as you sell past the base amount.
 * <b> UI </b>: make prettier!
 * <b> Executable package </b> and <b> multiplayer</b> over a local network.
