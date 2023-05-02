@@ -1,4 +1,3 @@
-from items import Log
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QSize
 from utilities import generate_label

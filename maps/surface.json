@@ -8,7 +8,7 @@
     "height": 11
   },
   "can_light_fires": true,
-  "background_color": "#a7ed75",
+  "background_color": "#59A608",
   "map": [
     ["WT", "", "WT", "", "WT", "MT", "Chicken", "MT", "", "", "GR", "GR", "GR", "", "", "", "CEntrance:cave:1:1:mining(5)", "", "", "", "", "CEntrance:cave:7:1:mining(5)", "", "BC", "", "", "IR", "Anvil", "C", ""],
     ["", "WT", "", "WT", "MT", "MT", "", "", "", "", "", "GR", "", "GR", "", "", "", "GR", "Dog", "Chicken", "Chicken", "Chicken", "", "", "", "", "", "IR", "", ""],
