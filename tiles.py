@@ -1,5 +1,5 @@
-import random
 import regex
+import random
 from shop import Shop
 from items import Axe, Pickaxe
 from PyQt5.QtGui import QPixmap
@@ -14,10 +14,10 @@ from items import OakShortbow, WillowShortbow, MagicShortbow, YewShortbow, Maple
 
 
 class ShopTile(QLabel):
-    # A tile on the game map that is the interface to a shop instance
+    # Abstract class, representing a tile on the game map that is an interface to a shop instance
     # There are different subtypes of shops, e.g. general shop or blacksmith shop, that have different initial stocks
 
-    clicked = pyqtSignal(int, int)
+    clicked = pyqtSignal(int, int)  # emit coordinates to interactable_clicked_on() on the Map object this tile is on
 
     def __init__(self, x, y, tile_width, tile_height, init_items, status_bar_signal):
 
@@ -40,6 +40,7 @@ class ShopTile(QLabel):
 
 
 class GeneralShop(ShopTile):
+    # Concrete shop tile class representing a general shop
 
     title = 'General Shop'
     description = 'A general shop for buying and selling basic goods'
@@ -60,6 +61,7 @@ class GeneralShop(ShopTile):
 
 
 class ArcheryShop(ShopTile):
+    # Concrete shop tile class representing an archery shop
 
     title = 'Archery Shop'
     description = 'An archery shop for buying and selling goods related to archery'
@@ -79,6 +81,7 @@ class ArcheryShop(ShopTile):
 
 
 class BlacksmithShop(ShopTile):
+    # Concrete shop tile class representing a blacksmith shop
 
     title = 'Blacksmith Shop'
     description = 'A blacksmith shop for buying and selling goods related to mining'
@@ -101,11 +104,11 @@ class BlacksmithShop(ShopTile):
 
 
 class Tile(QLabel):
-    # To be subclassed by non-empty tiles, which have an image that should be displayed as an icon
+    # Abstract class for all non-empty tiles (except ShopTile above), having an image that to be displayed as an icon
     # `tile_width` and `tile_height` set the fixed size of the QLabel widget, that all tiles in the map share
-    # If we want to shrink the image a bit (within that fixed tile size), pass in a `scale_icon` > 1.0
 
     def __init__(self, x, y, tile_width, tile_height, scale_icon=None):
+        # If we want to shrink the image a bit (within that fixed tile size), pass in a `scale_icon` > 1.0
 
         super().__init__()
 
@@ -122,7 +125,7 @@ class Tile(QLabel):
 
 
 class EmptyTile(QLabel):
-    # Empty tiles, that don't have interactable scenery or a player in, just to pad out map's grid
+    # Empty tiles have no visual display
 
     def __init__(self, x, y, tile_width, tile_height):
 
@@ -133,12 +136,18 @@ class EmptyTile(QLabel):
 
 
 class TransportTile(Tile):
-    # Every transport tile is written in the map json, with the name to reference the class,
-    # and the name of the map we are transporting to with coords, e.g. 'CEntrance:cave:x:y', or 'LDown:lower_cave:x:y'
+    # An abstract tile class representing tiles which when clicked on transport the player
+    # Every transport tile is written in the map json with:
+    # - name to reference the concrete tile class,
+    # - name of the map we are transporting
+    # - coordinates of where on that map
+    # e.g. 'CEntrance:cave:x:y', or 'LDown:lower_cave:x:y'
+    # We can transport within the same map by setting the name of the map to the one we're already on, and whatever
+    # coordinates are necessary
     # We can optionally specify requirements to use this transport tile, which are checked when clicked on
     # E.g. 'LDown:lower_cave:x:y:mining(5)' means we can only go down the ladder into the lower cave with >= 5 mining
 
-    clicked = pyqtSignal(int, int)
+    clicked = pyqtSignal(int, int)  # emit coordinates to interactable_clicked_on() on the Map object this tile is on
 
     def __init__(self, x, y, tile_width, tile_height, destination, destination_x, destination_y, requirements):
 
@@ -152,9 +161,9 @@ class TransportTile(Tile):
         self.destination_y = int(destination_y)
 
         # Parse the requirements string into a dictionary, mapping from specified skill string to the required level
-        # (In the future, could extend capability to require a certain item in the inventory - for now, just skills)
         # Required format is space separated list of 'skill(number)'
         # E.g. 'mining(5)' or 'mining(5) woodcutting(10)'
+        # will map to {'Mining': 5} or {'Mining': 5, 'Woodcutting': 10}
         self.requirements_string = requirements
         self.skill_requirements = {}
         skill_req_regex = regex.compile(r'^(\w+)\((\d{1,2})\)$')
@@ -175,6 +184,7 @@ class TransportTile(Tile):
 
 
 class CaveEntrance(TransportTile):
+    # Concrete transport tile representing a cave entrance
 
     title = 'Cave Entrance'
     description = 'Entrance to a cave'
@@ -185,6 +195,7 @@ class CaveEntrance(TransportTile):
 
 
 class CaveExit(TransportTile):
+    # Concrete transport tile representing a cave exit
 
     title = 'Cave Exit'
     description = 'Exit from a cave'
@@ -195,6 +206,7 @@ class CaveExit(TransportTile):
 
 
 class LadderDown(TransportTile):
+    # Concrete transport tile representing a ladder down
 
     title = 'Ladder Down'
     description = 'Wonder what is down there?'
@@ -205,6 +217,7 @@ class LadderDown(TransportTile):
 
 
 class LadderUp(TransportTile):
+    # Concrete transport tile representing a ladder up
 
     title = 'Ladder Up'
     description = 'Wonder what is up there?'
@@ -215,6 +228,7 @@ class LadderUp(TransportTile):
 
 
 class FireAltar(TransportTile):
+    # Concrete transport tile representing a fire altar
 
     title = 'Fire Altar'
     description = 'For teleporting back to home!'
@@ -225,8 +239,10 @@ class FireAltar(TransportTile):
 
 
 class BankChestTile(Tile):
+    # A concrete tile class representing the interface to the shared game bank
+    # When clicked on (when player within 1 tile), it will open the bank display widget in the game's main display
 
-    clicked = pyqtSignal(int, int)
+    clicked = pyqtSignal(int, int)  # emit coordinates to interactable_clicked_on() on the Map object this tile is on
 
     title = 'Bank Chest'
     description = 'Bank chest to interact with your bank'
@@ -244,12 +260,13 @@ class BankChestTile(Tile):
 
 
 class NPC(Tile):
-    # Wander a (2 x max radius + 1) x (2 x max radius + 1) grid
-    # Only wander onto empty tiles, not past map boundaries, and within it's max radius grid
+    # Abstract tile class representing NPCs
+    # Wanders a (2 x max radius + 1) x (2 x max radius + 1) grid, and moves every game tick
+    # Only wanders onto empty tiles, not past map boundaries, and within it's max radius grid
     # If we set maximum radius large, we could have an NPC that moves over entire map - just set very large, doesn't
     # matter about map dimensions
 
-    move = pyqtSignal(int, int)
+    move = pyqtSignal(int, int)  # emit coordinates to npc_move() on the Map object this tile is on
 
     def __init__(self, x, y, tile_width, tile_height, scale_icon=None):
 
@@ -268,6 +285,7 @@ class NPC(Tile):
 
 
 class Chicken(NPC):
+    # Concrete NPC tile for a chicken
 
     title = 'Chicken'
     description = 'Good for feathers!'
@@ -279,6 +297,7 @@ class Chicken(NPC):
 
 
 class Guard(NPC):
+    # Concrete NPC tile for a guard
 
     title = 'Guard'
     description = "Don't pick a fight with him!"
@@ -290,6 +309,7 @@ class Guard(NPC):
 
 
 class StrayDog(NPC):
+    # Concrete NPC tile for a stray dog
 
     title = 'Stray Dog'
     description = 'Needs a loving home!'
@@ -301,6 +321,8 @@ class StrayDog(NPC):
 
 
 class Player(Tile):
+    # Concrete tile for a player
+    # There will only be one of these across all the maps in the game
 
     path_to_icon = 'images/player.jpg'
 
@@ -309,24 +331,30 @@ class Player(Tile):
 
 
 class NonInteractable(Tile):
+    # Abstract tile class for all non-interactable tiles, basically just scenery we or NPCs cannot move onto
 
     def __init__(self, x, y, tile_width, tile_height, scale_icon=None):
         super().__init__(x, y, tile_width, tile_height, scale_icon=scale_icon)
 
 
 class TimedNonInteractable(NonInteractable):
-    # A non-interactable tile, but it should delete itself after a certain amount of game ticks
-    # `count_down` is a slot to be emitted to every time game ticker ticks,
-    # and `remove` is a signal connected to map object, which we emit on when we want to the containing map to delete
-    # We should not put these in the map json files, as it doesn't make sense to connect slots & signals generally
+    # Abstract class representing non-interactable tiles which should delete itself after a certain amount of game ticks
+    # We should not put these in the map json files, rather dynamically create from the way player interacts with game,
+    # e.g. a fire lit.
+    # Therefore concrete classes subclassing this class are not in the dictionary mapping code to tile type
+    # at the bottom of this file
 
-    remove_signal = pyqtSignal(int, int)
+    remove_signal = pyqtSignal(int, int)  # emits coordinates to map object this tile is on to handle removing
 
     def __init__(self, x, y, tile_width, tile_height, ticks_to_disappear, scale_icon=None):
+
         super().__init__(x, y, tile_width, tile_height, scale_icon=scale_icon)
+
+        # `ticks_to_disappear` is how many game ticks should pass before we delete this tile from map
         self.ticks_left = ticks_to_disappear
 
     def count_down(self):
+        # This function is emitted to every time game timer ticks
 
         assert self.ticks_left > 0
 
@@ -336,6 +364,9 @@ class TimedNonInteractable(NonInteractable):
 
 
 class Fire(TimedNonInteractable):
+    # Concrete timed non-interactable class representing a fire
+    # Created when using a tinderbox on logs in player's inventory
+    # Different level logs create different Fire's with higher ticks to wait before they are removed
 
     title = 'Fire'
     description = 'Hot!'
@@ -346,6 +377,7 @@ class Fire(TimedNonInteractable):
 
 
 class WaterFountain(NonInteractable):
+    # Concrete non-interactable tile representing water fountain scenery
 
     title = 'Water Fountain'
     description = 'Water fountain - if you are thirsty!'
@@ -356,6 +388,7 @@ class WaterFountain(NonInteractable):
 
 
 class Cart(NonInteractable):
+    # Concrete non-interactable tile representing cart scenery
 
     title = 'Cart'
     description = 'Needs its wheels fixing!'
@@ -366,6 +399,7 @@ class Cart(NonInteractable):
 
 
 class Anvil(NonInteractable):
+    # Concrete non-interactable tile representing anvil scenery
 
     title = 'Anvil'
     description = 'For smithing items'
@@ -376,6 +410,7 @@ class Anvil(NonInteractable):
 
 
 class ArcheryBarrel(NonInteractable):
+    # Concrete non-interactable tile representing archery barrel scenery
 
     title = 'Archery Barrel'
     description = 'For storing bows and arrows'
@@ -386,6 +421,7 @@ class ArcheryBarrel(NonInteractable):
 
 
 class MiningBarrel(NonInteractable):
+    # Concrete non-interactable tile representing mining barrel scenery
 
     title = 'Mining barrel'
     description = 'For storing pickaxes'
@@ -396,6 +432,7 @@ class MiningBarrel(NonInteractable):
 
 
 class Crate(NonInteractable):
+    # Concrete non-interactable tile representing crate scenery
 
     title = 'Crate'
     description = 'Wonder what is in here?'
@@ -406,6 +443,7 @@ class Crate(NonInteractable):
 
 
 class FurStall(NonInteractable):
+    # Concrete non-interactable tile representing fur stall scenery
 
     title = 'Fur Stall'
     description = 'Stall selling fur items'
@@ -416,6 +454,7 @@ class FurStall(NonInteractable):
 
 
 class BakeryStall(NonInteractable):
+    # Concrete non-interactable tile representing bakery stall scenery
 
     title = 'Bakery Stall'
     description = 'Stall selling baked goods'
@@ -426,16 +465,20 @@ class BakeryStall(NonInteractable):
 
 
 class Interactable(Tile):
-    # Abstract class representing something in the scenery we can interact with and deplete from
+    # Abstract class representing something in the scenery we can interact with and deplete resources from
     # It is interacted with using a tool, and yields concrete resource items
+    # Once all the resources have been depleted from it, it will take a certain amount of ticks to regenerate
+    # Each time we interact with it, we have a probability of yielding the resources,
+    # that depends on certain factors: relevant skill level, strength of tool, etc.
     # Will have multiple abstract subclasses for more specific items, e.g. Tree or Rock,
     # which in turn have subclasses that can be instantiated, e.g. Interactable -> Tree -> Oak Tree
 
-    clicked = pyqtSignal(int, int)
+    clicked = pyqtSignal(int, int)  # emit coordinates to interactable_clicked_on() on the Map object this tile is on
 
     def __init__(self, x, y, tile_width, tile_height, status_bar_signal, scale_icon=None):
 
         super().__init__(x, y, tile_width, tile_height, scale_icon=scale_icon)
+
         self.status_bar_signal = status_bar_signal
 
         # How much `health` it has is how many resources it yields until it is depleted
@@ -546,6 +589,7 @@ class Interactable(Tile):
             self.status_bar_signal.emit("You missed!")
 
     def mouseReleaseEvent(self, e):
+        # Only interact with the tile on a left-click if it is not depleted
 
         if e.button() == Qt.LeftButton:
 
@@ -570,7 +614,7 @@ class Tree(Interactable):
 
 
 class OakTree(Tree):
-    # Concrete class representing oak trees, that yield oak logs
+    # Concrete tree tile representing oak trees, that yield oak logs
 
     title = 'Oak Tree'
     description = 'An oak tree that yields oak logs on chopping with a copper axe or better'
@@ -621,7 +665,7 @@ class OakTree(Tree):
 
 
 class WillowTree(Tree):
-    # Concrete class representing willow trees, that yield willow logs
+    # Concrete tree tile representing willow trees, that yield willow logs
 
     title = 'Willow Tree'
     description = 'A willow tree that yields willow logs on chopping with a steel axe or better'
@@ -662,7 +706,7 @@ class WillowTree(Tree):
 
 
 class MapleTree(Tree):
-    # Concrete class representing maple trees, that yield maple logs
+    # Concrete tree tile representing maple trees, that yield maple logs
 
     title = 'Maple Tree'
     description = 'A maple tree that yields maple logs on chopping with a mithril axe or better'
@@ -701,6 +745,7 @@ class MapleTree(Tree):
 
 
 class YewTree(Tree):
+    # Concrete tree tile representing yew trees, that yield yew logs
 
     title = 'Yew Tree'
     description = 'A yew tree that yields yew logs on chopping with a mithril axe or better'
@@ -739,6 +784,7 @@ class YewTree(Tree):
 
 
 class MagicTree(Tree):
+    # Concrete tree tile representing magic trees, that yield magic logs
 
     title = 'Magic Tree'
     description = 'A magic tree that yields magic logs on chopping with a addamant axe or better'
@@ -786,7 +832,7 @@ class Rock(Interactable):
 
 
 class CopperRock(Rock):
-    # Concrete class representing copper rocks, that yield copper ores
+    # Concrete rock tile representing copper rocks, that yield copper ores
 
     title = 'Copper Rock'
     description = 'A copper rock that yields copper ores on mining with a copper pickaxe or better'
@@ -837,7 +883,7 @@ class CopperRock(Rock):
 
 
 class TinRock(Rock):
-    # Concrete class representing tin rocks, that yield tin ores
+    # Concrete rock tile representing tin rocks, that yield tin ores
 
     title = 'Tin Rock'
     description = 'A tin rock that yields tin ores on mining with a copper pickaxe or better'
@@ -853,14 +899,6 @@ class TinRock(Rock):
         super().__init__(x, y, tile_width, tile_height, status_bar_signal=status_bar_signal)
 
     def success_rate(self, skill, tool):
-        # Success rate depends on three things:
-        # - the type of rock. Higher level rocks have lower success rates for the same skill level & pickaxe type
-        # - mining level: higher mining level means higher success rate
-        # - tool type: higher level tools have higher success rates
-        # Our skill level is guaranteed to be high enough to use the tool,
-        # and the tool is guaranteed to be able to be used on this rock
-        # We only need to consider the tool types above the minimum tool type
-        # Each tool type has a y=mx+c line. All tool types have same gradient, but higher tools have higher intercepts
 
         gradient = 25/9
 
@@ -888,7 +926,7 @@ class TinRock(Rock):
 
 
 class CoalRock(Rock):
-    # Concrete class representing coal rocks, that yield coal ores
+    # Concrete rock tile representing coal rocks, that yield coal ores
 
     title = 'Coal Rock'
     description = 'A coal rock that yields coal ores on mining with a steel pickaxe or better'
@@ -929,7 +967,7 @@ class CoalRock(Rock):
 
 
 class IronRock(Rock):
-    # Concrete class representing iron rocks, that yield iron ores
+    # Concrete rock tile representing iron rocks, that yield iron ores
 
     title = 'Iron Rock'
     description = 'An iron rock that yields iron ores on mining with a mithril pickaxe or better'
@@ -968,6 +1006,7 @@ class IronRock(Rock):
 
 
 class GoldRock(Rock):
+    # Concrete rock tile representing gold rocks, that yield gold ores
 
     title = 'Gold Rock'
     description = 'A gold rock that yields gold ores on mining with a adamant pickaxe or better'
@@ -1002,9 +1041,8 @@ class GoldRock(Rock):
         return y
 
 
-# A mapping from letters code to type of Tile
-# Contains some that have a `.clicked` variable, which need to be connected in map, e.g. Interactable, ShopTile, etc.
-# And some that do not, e.g. subclasses of NonInteractable
+# We define a letter code to represent each concrete tile type that can be instantiated
+# We use these codes to manually draw the game maps in the JSON files
 code_to_feature = {
     # Trees
     'OT': OakTree,

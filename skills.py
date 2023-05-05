@@ -12,10 +12,10 @@ from items import CopperPickaxe, SteelPickaxe, MithrilPickaxe, AdamantPickaxe, T
 
 
 class Skill(QWidget):
-    # Abstract base class representing a Skill object, e.g. Mining or Woodcutting
-    # Just needs a title to instantiate in the subclasses; the experience and levelling code is shared across skills
-    # Each skill is a widget that is arranged in a parent widget which is the overall skill set
+    # Abstract base class representing a Skill object
+    # All skills share the same experience and levelling code, but they have their own (static) information
 
+    # Emit to Game object when we click on this skill, to switch the main display widget to a skill information widget
     skill_clicked_on = pyqtSignal(object)
 
     def __init__(self):
@@ -45,16 +45,17 @@ class Skill(QWidget):
         self.setLayout(layout)
 
     def update_skill_label(self):
-        # Slot for signal emitted when xp changes
+        # When we gain xp, update the text representation of the skill to reflect xp/levels gained
 
         self.text_label.setText("%s (%s xp)" % (self.level, self.experience))
 
     def add_experience(self, xp):
-        # Add experience to a skill
+        # Add experience to this skill object
         # If we reach the xp needed for the next level, increment the level and double experience for the level after
         # to keep it growing exponentially
         # It's possible we'll pass multiple levels at once, so keep incrementing level and next level xp as necessary
-        # For a xp gain transaction, generate a status bar string, which says how many levels we gained, etc.
+        # For an xp gain, generate a string, which says how many levels we gained, if we unlocked any new things, etc.
+        # to output on the status bar for the user to see
 
         assert xp > 0
 
@@ -104,6 +105,7 @@ class Skill(QWidget):
         return self.level < other
 
     def mouseReleaseEvent(self, e):
+        # If we left-click on the skill's widget, replace the main game display widget with information about the skill
 
         if e.button() == Qt.LeftButton:
             self.skill_clicked_on.emit(self.information_widget)
@@ -112,6 +114,7 @@ class Skill(QWidget):
 
 
 class Woodcutting(Skill):
+    # Concrete class for the Woodcutting skill
 
     title = 'Woodcutting'
     path_to_icon = 'images/woodcutting.jpg'
@@ -145,6 +148,7 @@ class Woodcutting(Skill):
 
 
 class Mining(Skill):
+    # Concrete class for the Mining skill
 
     title = 'Mining'
     path_to_icon = 'images/mining.jpg'
@@ -173,6 +177,7 @@ class Mining(Skill):
 
 
 class Firemaking(Skill):
+    # Concrete class for the Firemaking skill
 
     title = 'Firemaking'
     path_to_icon = 'images/firemaking.jpg'
@@ -201,6 +206,7 @@ class Firemaking(Skill):
 
 
 class Fletching(Skill):
+    # Concrete class for the Fletching skill
 
     title = 'Fletching'
     path_to_icon = 'images/fletching.jpg'
@@ -229,7 +235,7 @@ class Fletching(Skill):
 
 
 class SkillSet(QWidget):
-    # Represents a collection of skills for the player, with one instance of each skill for each skill class type
+    # Represents a collection of all the skills for the player, with one instance of each skill for each skill type
     # The overall skill collection is a widget, which contains each skill widget in vertical layout
 
     def __init__(self, status_bar_signal):
@@ -287,7 +293,6 @@ class SkillSet(QWidget):
             # Work out if we are adding xp for generated items or processed items
             # e.g. if generated is True and considering a log it was generated from a tree -> woodcutting xp
             # but if generated is False and considering a log it was processed with a tinderbox -> firemaking xp
-            # the tool used in the interaction will be in the list of relevant tools for the relevant skills
             xp_map = skill.xp_gain_per_generation if generated else skill.xp_gain_per_process
 
             for item in items:
@@ -312,14 +317,18 @@ class SkillSet(QWidget):
                 return skill >= tool.skill_level_required
 
     def can_burn(self, log):
+        # Check our firemaking level meets minimum level needed to burn the log
 
         return self.skills[Firemaking] >= log.firemaking_required
 
     def can_fletch(self, log):
+        # Check our fletching level meets minimum level needed to fletch the log
 
         return self.skills[Fletching] >= log.fletching_required
 
     def relevant_skill(self, tool):
+        # Return the skill that lists this tool as it's relevant tool
+        # Will only be one relevant skill for each tool
 
         for skill_type in self.skills:
 

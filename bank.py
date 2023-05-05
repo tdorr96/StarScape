@@ -6,9 +6,10 @@ from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QVBoxLayout, QHBoxLayo
 
 
 class BankSlot(QWidget):
-    # Represents a slot in the bank's 10 x 10 item grid, very similar code to ShopSlot
-    # BankSlot a wrapper around a collection of instantiated items, of the same type, stored in the bank
+    # Represents a slot in the bank's 10 x 10 item grid (one slot out of the 100 slots) - very similar code to ShopSlot
+    # BankSlot is a wrapper around a collection of instantiated items, all the same type, stored in the bank
     # If there are no items in the collection, it's effectively an empty slot placeholder and has no visual display
+    # BankSlot's alternative between empty placeholder and item collections as we add/remove items to/from the bank
 
     slot_clicked = pyqtSignal(int, type)  # number to withdraw x type of item withdrawing
 
@@ -26,10 +27,11 @@ class BankSlot(QWidget):
 
         # `self.items` and `self.item_type` either:
         # - an empty list and None if no items being stored here: empty placeholder
-        # - or a list of the item instances and the concrete type of item objects in the list (guaranteed to be same)
+        # - a list of the item instances and the concrete type of item objects in the list (guaranteed to all be same)
         self.items = []
         self.item_type = None
 
+        # A bank slot is visually represented by the item's image, with the title and how many are stored below
         slot_layout = QVBoxLayout()
 
         self.item_image = QLabel("")
@@ -40,7 +42,7 @@ class BankSlot(QWidget):
 
         self.setLayout(slot_layout)
 
-        # Create the QActions in advance to be used on left and right clicks
+        # Create the withdrawing QActions in advance, to be used on left and right clicks for withdrawing from bank
 
         self.withdraw_one_action = QAction("Withdraw 1", self)
         self.withdraw_one_action.triggered.connect(self.withdraw_one_clicked)
@@ -55,6 +57,11 @@ class BankSlot(QWidget):
         self.withdraw_all_action.triggered.connect(self.withdraw_all_clicked)
 
     def update_text_label(self):
+        # Update QLabel visually representing the item's title and the number of items stored in bank
+        # Need to update whenever:
+        # - all items of the type removed, so now it's an empty placeholder
+        # - some items added so it's no longer empty: set to the title and how many now in bank
+        # - some more items were added and it was non-empty to begin with: update how many in bank
 
         if len(self.items) == 0:
             # Empty, remove text
@@ -81,13 +88,13 @@ class BankSlot(QWidget):
             self.item_image.setAlignment(Qt.AlignCenter)
 
     def is_empty_slot(self):
-        # Is the slot not collecting any items i.e. an empty placeholder
+        # Is the slot not storing any items i.e. is it an empty placeholder slot in bank
 
         return len(self.items) == 0
 
     def add_items(self, new_items):
-        # We assume the types of all the new items we're adding are the same as the type this slot is representing
-        # But we will check with an assert
+        # Add items to the bank slot, whether it was empty before or not empty
+        # If it was not empty, we assume (and check) all the items being added are the same type as those already stored
 
         assert len(new_items) > 0
 
@@ -112,9 +119,12 @@ class BankSlot(QWidget):
         assert all(type(self.items[i]) == self.item_type for i in range(len(self.items)))
 
     def remove_items(self, amount):
-        # Bank.withdraw_from() will only request an amount not more than what is in the bank slot
-        # The `amount` passed in here will be the minimum of a couple quantities,
-        # e.g. that amount we requested, space in inventory
+        # This function is called from Bank.withdraw_from(), and it will only request an amount that is never more
+        # than what is in the bank slot.
+        # This is because withdrawn_from() is emitted to when we right-click withdraw from a non-empty bank slot
+        # and the options for withdrawing (e.g. withdraw 1, 5, etc.) are dynamically presented on a right-click,
+        # based on how many is in the slot
+        # (actual amount passed in is what was requested, but capped at inventory space if not space for full amount)
 
         assert 0 < amount <= len(self.items)
         assert len(self.items) > 0
@@ -136,7 +146,7 @@ class BankSlot(QWidget):
     def contextMenuEvent(self, e):
 
         if len(self.items) > 0:
-            # Only want to right-click on bank slots that actually have items
+            # Only want to present right-click menu on bank slots that actually have items
             # Only add the actions we have the number of items for, e.g. don't add 'withdraw 10' if we only have 5 items
 
             self.status_bar_signal.emit("")
@@ -183,11 +193,12 @@ class BankSlot(QWidget):
 
 
 class Bank(QWidget):
-    # A widget representing a bank interface, that will replace main game map display when opened
+    # A widget representing the bank interface, that will replace the main game map display when opened
+    # It is opened by clicking on a bank chest tile in the game (if player is within 1 tile of it)
     # There is one bank instance for the game, so different bank tiles interface to the same bank storage object `Bank`
-    # Each grid in the bank layout is a BankSlot, that is either an empty placeholder,
-    # or wraps a collection of non-zero items being stored
-    # Guaranteed to be only one bank slot for each type of item
+    # The bank is represented as a 10x10 grid, with each slot a BankSlot object, that is either an empty placeholder,
+    # or wraps a collection of non-zero items of the same type being stored
+    # There is guaranteed to be only one bank slot for each item type
 
     def __init__(self, inventory, status_bar_signal):
 
@@ -216,7 +227,7 @@ class Bank(QWidget):
         self.bank.setContentsMargins(10, 10, 10, 10)
         self.bank.setSpacing(2)
 
-        # Fill all the grid slots with empty slots
+        # Fill all the grid slots with empty BankSlot's
         for i in range(self.bank_limit):
 
             col, row = i % 10, int(i/10)
@@ -254,9 +265,10 @@ class Bank(QWidget):
         self.setLayout(overall_layout)
 
     def sort(self):
-        # Sort the bank, so we re-order all the widgets based on the ordering defined in `concrete_types`
+        # Sort the bank, so we re-order all the widgets based on the ordering defined in `items.concrete_types`
+        # This will sort items into tools, then logs, then ores, etc. etc.
         # All empty bank slots go at the end
-        # Slot for signal when 'sort' button is pressed
+        # This function is the slot for the signal emitted when 'sort' button is pressed
 
         # Go through all bank slots, remove from grid, and split into two lists: slots with items and empty slots
         empty_widgets = []
@@ -276,7 +288,7 @@ class Bank(QWidget):
 
             self.bank.removeItem(grid_item)
 
-        # Sort the slots containing items into their predefined order, e.g. tools first
+        # Sort the slots containing items into their predefined order defined by `concrete_types`, e.g. tools first
         non_empty_widgets = sorted(non_empty_widgets, key=lambda x: concrete_types.index(x.item_type))
 
         # Add empty widgets back to the end of the list, so total list is length of all bank slots (10 x 10)
@@ -293,7 +305,8 @@ class Bank(QWidget):
     def find_item_type_slot(self, item_type):
         # Searches all the slots to see if we have items of the type we are looking for stored in a slot
         # Will only ever pass in concrete types, not abstract types, so check types equal, not isinstance()
-        # There will only ever be one slot for a given item type, so return first we find
+        # E.g. we will never find an generic 'Axe' type, only ever concrete 'Copper Axe' types
+        # There will only ever be one slot for a given item type, so we return the first slot we find
         # Returns None if there is not a slot holding items of this type
 
         for i in range(self.bank_limit):
@@ -307,7 +320,7 @@ class Bank(QWidget):
         return None
 
     def find_first_empty_slot(self):
-        # Searches the slots until we find an empty one (i.e. one with no items)
+        # Searches the slots row by row until we find the first empty one (i.e. one with no items)
         # If there is no empty slot in the grid, return None
 
         for i in range(self.bank_limit):
@@ -346,7 +359,7 @@ class Bank(QWidget):
         assert len(items_to_deposit) > 0
         assert all(type(x) in concrete_types for x in items_to_deposit)
 
-        # Get item type of items we're trying to deposit; check they're all the same type and there is a slot for them
+        # Get item type of items we're trying to deposit; check they're all the same type and there is a space for them
         item_type_to_deposit = type(items_to_deposit[0])
 
         assert all(type(items_to_deposit[i]) == item_type_to_deposit for i in range(len(items_to_deposit)))
@@ -367,7 +380,8 @@ class Bank(QWidget):
 
     def withdraw_from(self, amount, item_type_to_withdraw):
         # Item type guaranteed to already be in bank because we will have right-clicked on it and emitted to this slot
-        # and the amount won't be more than what is in the bank (but could be more than we have space for in inventory)
+        # The amount won't be more than what is in the bank
+        # (but could be more than we have space for in inventory - so cap at that)
 
         if self.inventory.is_full():
             self.status_bar_signal.emit("Inventory full - cannot withdraw any items")

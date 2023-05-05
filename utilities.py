@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QLabel
 
 
 def generate_label(text, font_size, alignment=Qt.AlignCenter, w=None, h=None):
+    # Generate a text QLabel with specified font size, alignment, width and height
 
     label = QLabel(text)
 

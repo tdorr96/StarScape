@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QVBoxLayout, QHBoxLayo
 
 
 class ShopSlot(QWidget):
-    # Represents a slot in the shop's 10 x 10 item grid
+    # Represents a slot in the shop's 10 x 10 item grid (one out of the 100 slots) - similar code to BankSlot
     # ShopSlot a wrapper around a collection of instantiated items of the same type for sale,
-    # Visually displayed in shop's grid as item icon, item name, and number in collection (i.e. how many for sale)
+    # Visually displayed in shop's grid as item icon, item name, and how many for sale
     # If there are no items in the collection, it's effectively an empty slot placeholder and has no visual display
     # Once added to the shop's grid, the slot object is permanently in that grid position, but by making the item list
     # empty/non-empty as we sell/buy it effectively alternates between empty placeholder or collection of sellable items
@@ -29,10 +29,11 @@ class ShopSlot(QWidget):
 
         # `self.items` and `self.item_type` either:
         # - an empty list and None if no items being stored here: empty placeholder for slot in shop
-        # - or a list of the item instances and the concrete type of item objects in the list (guaranteed to be same)
+        # - or a list of item instances and the concrete type of item objects in the list (guaranteed to all be same)
         self.items = []
         self.item_type = None
 
+        # A shop slot visually represented as the item's image, its title, and how many in this slot (how many for sale)
         slot_layout = QVBoxLayout()
 
         self.item_image = QLabel("")
@@ -43,7 +44,7 @@ class ShopSlot(QWidget):
 
         self.setLayout(slot_layout)
 
-        # Create the QActions in advance to be used on right clicks
+        # Create the QActions in advance to be used on right clicks for buying from the shop
 
         self.buy_one_action = QAction("Buy 1", self)
         self.buy_one_action.triggered.connect(self.buy_one_clicked)
@@ -58,6 +59,11 @@ class ShopSlot(QWidget):
         self.buy_all_action.triggered.connect(self.buy_all_clicked)
 
     def update_text_label(self):
+        # Update QLabel visually representing the item's title and the number of items stored in shop slot
+        # Need to update whenever:
+        # - all items of the type removed, so now it's an empty placeholder
+        # - some items added so it's no longer empty: set to the title and how many now in shop
+        # - some more items were added and it was non-empty to begin with: update how many in shop
 
         if len(self.items) == 0:
             # Empty, remove text
@@ -89,8 +95,8 @@ class ShopSlot(QWidget):
         return len(self.items) == 0
 
     def add_items(self, new_items):
-        # We assume the types of all the new items we're adding are the same as the type this slot is representing
-        # But we will check with an assert
+        # Add items to the shop slot, whether it was empty before or not empty
+        # If it was not empty, we assume (and check) all the items being added are the same type as those already stored
 
         assert len(new_items) > 0
 
@@ -115,9 +121,12 @@ class ShopSlot(QWidget):
         assert all(type(self.items[i]) == self.item_type for i in range(len(self.items)))
 
     def remove_items(self, amount):
-        # Shop.buy_from() will only request an amount not more than what is in the shop slot
-        # The `amount` passed in here will be the minimum of several quantities,
-        # e.g. that amount we requested, what we can afford, space in inventory
+        # This function is called from Shop.buy_from(), and it will only request an amount that is never more
+        # than what is in the shop slot.
+        # This is because buy_from() is emitted to when we right-click buy from a non-empty shop slot
+        # and the options for buying (e.g. buy 1, 5, etc.) are dynamically presented on a right-click,
+        # based on how many is in the slot
+        # (actual amount passed in is what was requested, but capped at inventory space or what we can afford)
 
         assert 0 < amount <= len(self.items)
         assert len(self.items) > 0
@@ -188,9 +197,10 @@ class ShopSlot(QWidget):
 class Shop(QWidget):
     # A widget representing a shop interface, that will replace main game map display when opened
     # There is one shop instance for each shop interface tile, so they have unique stock items
-    # Each grid in the shop layout is a ShopSlot, that is either an empty placeholder,
-    # or wraps a collection of non-zero items for sale
-    # Guaranteed to be only one shop slot for each item type
+    # They are opened when corresponding shop interface tile (e.g. shopkeeper) is clicked on and player within 1 tile
+    # The shop is represented as a 10x10 grid, with each slot a ShopSlot object, that is either an empty placeholder,
+    # or wraps a collection of non-zero items of the same type for sale
+    # There is guaranteed to be only one shop slot for each item type
 
     def __init__(self, shop_title, init_items, status_bar_signal):
         # Different shop types (e.g. general shop or blacksmith) may stock different initial items: `init_items`
@@ -247,7 +257,7 @@ class Shop(QWidget):
         self.setLayout(overall_layout)
 
         # Add the initial stock items
-        # Can handle the list containing items of different type, as we add lists of 1 item, one at a time
+        # Can handle a list containing items of different type, as we add lists of 1 item, one at a time
         for item in init_items:
 
             item_type = type(item)
@@ -265,7 +275,8 @@ class Shop(QWidget):
 
     def set_inventory_reference(self, inventory):
         # Will be called from main Game class after map initialization
-        # Easier for shops to have reference to inventory, so can connect signals from ShopSlot directly to .buy_from()
+        # Easier for shops to have reference to inventory
+        # so can connect signals from ShopSlot directly to Shop.buy_from()
 
         self.inventory = inventory
 
@@ -325,7 +336,7 @@ class Shop(QWidget):
         assert len(items_to_sell) > 0
         assert all(type(x) in concrete_types for x in items_to_sell)
 
-        # Get item type of items we're trying to sell, and check they're all the same type and there is a slot for them
+        # Get item type of items we're trying to sell, and check they're all the same type and there is space for them
         item_type_to_sell = type(items_to_sell[0])
 
         assert all(type(items_to_sell[i]) == item_type_to_sell for i in range(len(items_to_sell)))
@@ -350,6 +361,8 @@ class Shop(QWidget):
 
     def buy_from(self, amount, item_type_to_buy):
         # Item type guaranteed to already be in shop because we will have right-clicked on it and emitted to this slot
+        # The amount won't be more than what is in the shop
+        # but could be more than we have space for in inventory or can afford - so cap at lowest limiting factor
 
         if self.inventory.is_full():
             self.status_bar_signal.emit("Inventory full - cannot buy any items")

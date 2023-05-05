@@ -6,17 +6,18 @@ from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QVBoxLayout, QHBoxLayo
 
 
 class InventorySlot(QLabel):
-    # Label widget for a non-empty inventory slot, which basically wraps around an Item object
-    # Has a right-click context menu, that displays selling/depositing various amounts depending on visible game display
-    # Even though an InventorySlot wraps 1 item, it will pass the call back to Inventory, so we can sell/bank
-    # more than 1 item from an InventorySlot just with a reference to the item type we are selling/banking
+    # Widget for a non-empty inventory slot, which basically wraps around a single Item object
+    # The inventory is made up of 28 slots, that are either these InventorySlot, or the EmptyInventorySlot class below
 
-    # If we left-click on an item when the game map is visible, we are selecting the item
-    # This will either highlight select if no other one selected,
-    # or combine two items for interaction, e.g. if tinderbox already selected and now select log, make a fire
-    # Emits (col, row) of item clicked on
+    # If we left-click on an item when a game map is visible, we are selecting the item,
+    # either to highlight it (if no other one selected), or combine the clicked on slot with a previously selected item
+    # This signal emits the (col, row) of the item clicked on, as main Inventory class handles selection logic
     select_clicked = pyqtSignal(int, int)
 
+    # The signals emit to the main inventory class
+    # For example, if we are trying to sell 5 of this item, obviously this slot represents only one of the item,
+    # so we pass back control to main inventory class for handling selling/depositing multiple amounts of this item type
+    # which are going to be spread across several different inventory slots in the inventory
     sell_slot_clicked = pyqtSignal(int, type)     # amount to sell x type of item to sell
     deposit_slot_clicked = pyqtSignal(int, type)  # amount to deposit x type of item to deposit
 
@@ -24,18 +25,26 @@ class InventorySlot(QLabel):
 
         super().__init__()
 
+        # Position in the inventory's 7x4 grid
         self.col, self.row = col, row
 
+        # The item object stored in this non-empty slot
         self.item = item
+
         self.setFixedSize(QSize(slot_width, slot_height))
 
+        # Game display index helps us know what widget is visible in the main game display (a bank, shop, map, etc.)
         self.game_display_index = game_display_index
+
         self.status_bar_signal = status_bar_signal
 
+        # This inventory slot's widget is visually display as an image, the image of item being stored
         self.setPixmap(QPixmap(self.item.path_to_icon).scaled(int(slot_width/2), int(slot_height/2), Qt.KeepAspectRatio))
         self.setAlignment(Qt.AlignCenter)
 
         # Create actions in advance to display in right-click menu
+        # Define actions for both selling and depositing various amounts,
+        # which are to be dynamically displayed on right-click event depending on if a bank or shop interface is visible
 
         self.sell_one_action = QAction("Sell 1", self)
         self.sell_one_action.triggered.connect(self.sell_one_clicked)
@@ -75,6 +84,7 @@ class InventorySlot(QLabel):
 
     def sell_all_clicked(self):
         # We don't know how many in inventory, so emit the maximum it could be, which is 28
+        # Inventory will cap the sell 28 at what we actually only have in our inventory
 
         self.sell_slot_clicked.emit(28, type(self.item))
 
@@ -91,10 +101,14 @@ class InventorySlot(QLabel):
         self.deposit_slot_clicked.emit(10, type(self.item))
 
     def deposit_all_clicked(self):
+        # We don't know how many in inventory, so emit the maximum it could be, which is 28
+        # Inventory will cap the deposit 28 at what we actually only have in our inventory
 
         self.deposit_slot_clicked.emit(28, type(self.item))
 
     def contextMenuEvent(self, e):
+        # If we right-click on an inventory item when a shop or bank is visible,
+        # we dynamically create the context menu, displaying the selling/depositing actions defined in init
 
         if self.game_display_index.is_shop_visible():
             # Only want to display selling actions if the game display is a shop
@@ -121,6 +135,12 @@ class InventorySlot(QLabel):
             context.exec_(e.globalPos())
 
     def mouseReleaseEvent(self, e):
+        # Left-clicking an inventory slot has different meaning depending on what display is visible:
+        # - if a map is visible, emit to main Inventory class for the item selection/combining items logic
+        # - if a shop is visible, update the status bar text to display sale price
+        # - if a bank is visible, deposit 1 of the item
+        # The call to e.ignore() passes control up to the main Game mouseReleaseEvent() method
+        # which will de-select any inventory item selected
 
         self.status_bar_signal.emit("")
 
@@ -146,18 +166,18 @@ class InventorySlot(QLabel):
             e.ignore()
 
     def highlight(self):
-        # If this item is the selected item in the inventory, need to highlight
+        # If this item is the selected item in the inventory, need to visually highlight
 
         self.setStyleSheet("background-color:lightyellow")
 
     def dehighlight(self):
-        # If we un-selecting the item, un-highlight
+        # If we are un-selecting this item, un-highlight
 
         self.setStyleSheet("")
 
 
 class EmptyInventorySlot(QLabel):
-    # Label widget for an empty inventory slot, just a placeholder in inventory grid
+    # Widget for an empty inventory slot - just a placeholder in inventory grid, nothing special
 
     def __init__(self, slot_width, slot_height, status_bar_signal):
 
@@ -168,12 +188,16 @@ class EmptyInventorySlot(QLabel):
         self.status_bar_signal = status_bar_signal
 
     def mouseReleaseEvent(self, e):
+        # If we click on this empty inventory slot, pass control up the mouseReleaseEvent() hierarchy to Game object
+        # which will de-select any inventory item that was selected
 
         self.status_bar_signal.emit("")
         e.ignore()
 
 
 class GoldPouch(QWidget):
+    # Widget to store how much gold we have in the game,
+    # with an associated visual display to be displayed alongside the Inventory widget
 
     # Different icons for gold depending on how large the gold quantity is (small, medium, large)
     path_to_small_icon = 'images/gold_small.jpg'    # 0 <= gold < 100
@@ -192,6 +216,7 @@ class GoldPouch(QWidget):
         # Start with 100 gold
         self.gold = 100
 
+        # Gold visually displayed as a widget, with an image of gold pieces, next to text saying how much gold there is
         gold_layout = QHBoxLayout()
 
         self.image_label = QLabel("")
@@ -217,11 +242,11 @@ class GoldPouch(QWidget):
             QSize(int(self.width/3), int(self.height/3)), Qt.KeepAspectRatio
         )
 
-        # Re-draw widget
+        # Re-draw widget to set the icon image and text to "100 g"
         self.redraw()
 
     def redraw(self):
-        # Update the gold's image and text in the QLabels
+        # Update the gold widget's image and text in the QLabels
 
         self.text_label.setText("%sg" % str(self.gold))
 
@@ -250,12 +275,12 @@ class GoldPouch(QWidget):
 
 
 class Inventory(QWidget):
-    # An inventory holds a collection of instantiated concrete item types, i.e. resources or tools
-    # It has a maximum inventory size of 28, methods to remove and add items, get tools in the inventory, etc.
+    # An inventory holds a collection of instantiated concrete item types
+    # It has a maximum inventory size of 28, methods to remove and add items, get tools from the inventory, etc.
     # It is also a widget that appears in the top left panel, and is visualised as a display grid of 28 icons
-    # The inventory is stored as a grid layout, with each grid an inventory slot, that is either
-    # - An empty slot placeholder
-    # - An item slot, which is basically a wrapper around an Item object
+    # The inventory items themselves are stored as a grid layout, with each grid an inventory slot, that is either
+    # - An empty slot placeholder (EmptyInventorySlot)
+    # - An item slot (InventorySlot) which is basically a wrapper around an Item object
 
     def __init__(self, skills, game_display_index, status_bar_signal):
 
@@ -265,7 +290,10 @@ class Inventory(QWidget):
         self.total_height = 600
 
         self.skills = skills
+
+        # Game display index helps us know what widget is visible in the main game display (a bank, shop, map, etc.)
         self.game_display_index = game_display_index
+
         self.status_bar_signal = status_bar_signal
 
         # Set size of whole inventory widget
@@ -295,10 +323,12 @@ class Inventory(QWidget):
         # An item in the inventory may have been selected, so keep track of which that item is
         # `selected` is either a coordinate (col, row), or None
         # Start out with nothing selected
-        # Selection happens in two: set `self.selected` and highlight the corresponding slot (similarly for reverse)
+        # If an item is selected, we need to make sure it's corresponding slot is highlighted
+        # and similarly, de-highlighted if un-selected
         self.selected = None
 
         # A fresh inventory has a copper axe, a copper pickaxe, a tinderbox, and a knife
+        # Whenever adding inventory items to the grid, make sure we connect the signals to the appropriate slots
         init_items = [CopperAxe(), CopperPickaxe(), Tinderbox(), Knife()]
         for init_index in range(len(init_items)):
 
@@ -324,8 +354,7 @@ class Inventory(QWidget):
             col, row = i % 4, int(i/4)
             self.inventory.addWidget(EmptyInventorySlot(self.slot_width, self.slot_height, self.status_bar_signal), row, col)
 
-        # Put bold 'Inventory' and the gold pouch above the grid
-
+        # Put bold 'INVENTORY' text and the gold pouch widget above the item grid
         overall_layout = QVBoxLayout()
         overall_layout.setContentsMargins(5, 5, 5, 5)
         overall_layout.setSpacing(1)
@@ -367,16 +396,16 @@ class Inventory(QWidget):
     def get_tool(self, tool_type, skill_set=None):
         # Return a reference to the best tool of the specified type in our inventory (i.e. one with highest strength)
         # If we specify a skill set we also want to only get a tool that we can use (i.e. have skill level for)
-        #
+        # This is called when we click on an interactable tile, like a tree/rock - we want to use the best tool we can
         # Behaviour:
-        # - If there are multiple tools of the same type, get the first one appearing in the inventory
+        # - If there are multiple tools of the same type, get the first one appearing in the inventory (i.e. row by row)
         # - If there are mixed tool types (e.g. tool type was an abstract class), then return a reference to the
         #   tool with the highest strength.
         # - Returns None if no tool in inventory
-        #
         # E.g. if we're trying to get any axe type (i.e. `tool_type` is the abstract class Axe), return the axe
-        # (Copper, Steel, or Mithril) in the inventory with the highest strength, ordered first in the inventory.
+        # (Copper, Steel, Mithril, Addy) in the inventory with the highest strength, ordered first in the inventory.
         # If we also specify a skill set, we return the highest strength tool that we are actually able to use.
+        # E.g. with a woodcutting leve of 10, and an Addy and Mithril Axe in our inventory - only return Mithril
 
         assert issubclass(tool_type, Tool)  # Restricting our item type to tools
 
@@ -432,6 +461,7 @@ class Inventory(QWidget):
             inventory_slot.widget().close()
             self.inventory.removeItem(inventory_slot)
 
+            # When creating a new inventory slot, make sure to connect up all the signals & slots
             item_slot = InventorySlot(inventory_col, inventory_row, item, self.slot_width, self.slot_height, self.game_display_index, self.status_bar_signal)
             item_slot.sell_slot_clicked.connect(self.sell)
             item_slot.deposit_slot_clicked.connect(self.deposit)
@@ -443,7 +473,7 @@ class Inventory(QWidget):
             inventory_slot = self.inventory.itemAtPosition(inventory_row, inventory_col)
 
     def deposit_all(self):
-        # Slot connected to bank's 'deposit all' button
+        # Slot connected to bank's 'deposit all' button signal
 
         # Work out how many of each item type in inventory
         # Python dictionaries in this Python version are insertion ordered
@@ -465,7 +495,7 @@ class Inventory(QWidget):
             else:
                 type_count[item_type] = 1
 
-        # We re-compute whether there is space for each item type on each call to `self.deposit`
+        # We re-compute whether there is space for each item type in each call to `self.deposit`
         # If we can only fit some of the item types from deposit all, it will stop when it's full of types
         # (but add all the items of the types it did manage to fit before got full)
         # E.g. if the inventory is 1 Oak Log, then 1 Willow Log, then 26 Oak logs,
@@ -516,6 +546,7 @@ class Inventory(QWidget):
         return removed_items
 
     def sell(self, amount, item_type_to_sell):
+        # This function is emitted to when we right-click sell an InventorySlot
         # If we request to sell more than we have, `self.remove_from()` will cap at what we have in the inventory
 
         shop = self.game_display_index.get_visible_shop()
@@ -534,6 +565,7 @@ class Inventory(QWidget):
         self.status_bar_signal.emit("")
 
     def deposit(self, amount, item_type_to_deposit):
+        # This function is the slot emitted to when we right-click deposit an InventorySlot
         # If we request to deposit more than we have, `self.remove_from()` will cap at what we have in the inventory
 
         bank = self.game_display_index.get_visible_bank()
@@ -550,13 +582,13 @@ class Inventory(QWidget):
         self.status_bar_signal.emit("")
 
     def inventory_item_selected(self, col, row):
-        # If an inventory item is selected (i.e. left-clicked in map mode), cases:
+        # If an inventory item is selected (i.e. left-clicked in map mode), there are three cases:
         # - if no other item currently selected, select and highlight this one
         # - if another item already selected, and we clicked the same one, deselect and de-highlight
         # - if another item already selected, and we click a different one, try combine them in a meaningful way
-        #   (one has to be a tool, the other a resource).
         # Logic for handling item selection is handled in this `Inventory` class
         # `InventorySlot` class just has a highlight/de-highlight method, and a signal to emit to this slot
+        # All we need to make sure is that `self.selected` is kept in sync with any highlighted InventorySlot's
 
         if self.selected is None:
             # Nothing currently selected, so select whatever we clicked
@@ -606,15 +638,16 @@ class Inventory(QWidget):
 
                 else:
                     # We clicked on a tool and a resource (in either order), do the combining
+                    # `result` will be a dictionary, storing if it succeeded/failed, what to do if it succeeded, etc.
 
-                    result = tool_item.process(
+                    result = tool_item.use_on_resource_item(
                         skills=self.skills,
                         resource=resource_item,
                         visible_map=self.game_display_index.get_last_viewed_map()
                     )
 
                     if result['success']:
-                        # We could combine the items, now see if we need to remove / replace the resource
+                        # We could combine the items, now see if we need to remove / replace the resource in inventory
 
                         if result['action'] == 'remove':
                             # Remove the resource, e.g. tinderbox lighted a log and log needs to disappear
@@ -658,7 +691,7 @@ class Inventory(QWidget):
                             # Set selected to None and de-higlight tool
                             self.deselect_item()
                         else:
-                            # the selected resource item slot will have been removed/replaced, nothing to de-highlight
+                            # The selected resource item slot will have been removed/replaced, nothing to de-highlight
                             # just set the inventory's selected item to None
                             self.selected = None
 
@@ -668,12 +701,12 @@ class Inventory(QWidget):
                         self.deselect_item()
 
     def deselect_item(self):
-        # If there is a currently selected item, deselect it and un-highlight
+        # If there is a currently selected item, deselect it and un-highlight relevant InventorySlot
         # This can be called from Game.mouseReleaseEvent, which is why all our mouseReleaseEvents have .ignore()
-        # to bubble up the call and deselect an item if we interact with the game in a way which should deselect item
+        # to bubble up control and deselect an item if we interact with the game in a way which should deselect item
         # E.g. if we have an item selected, and we move the player, deselect the item
         # The only time we .accept() a mouseReleaseEvent is in InventorySlot if we left-click in map-mode, which
-        # emits to `self.inventory_item_selected()` instead, to let us decide how to handle selection/deselection
+        # emits to `inventory_item_selected()` instead, to let us decide how to handle selection/deselection
 
         if self.selected is not None:
             self.inventory.itemAtPosition(self.selected[1], self.selected[0]).widget().dehighlight()

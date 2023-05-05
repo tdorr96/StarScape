@@ -1,5 +1,5 @@
 class Item:
-    # Base abstract class for all items: tools, resources, etc.
+    # Base abstract class for all items: tools, weapons, resources, etc.
 
     def __init__(self):
         super().__init__()
@@ -9,18 +9,21 @@ class Item:
 
 
 class Weapon(Item):
+    # Abstract class for all weapon items
 
     def __init__(self):
         super().__init__()
 
 
 class Bow(Weapon):
+    # Abstract class for all bow items
 
     def __init__(self):
         super().__init__()
 
 
 class OakShortbow(Bow):
+    # Concrete item representing an Oak Shortbow
 
     title = 'Oak Shortbow'
     description = 'Shortbow made from an oak log for firing arrows'
@@ -33,6 +36,7 @@ class OakShortbow(Bow):
 
 
 class WillowShortbow(Bow):
+    # Concrete item representing a Willow Shortbow
 
     title = 'Willow Shortbow'
     description = 'Shortbow made from a willow log for firing arrows'
@@ -45,6 +49,7 @@ class WillowShortbow(Bow):
 
 
 class MapleShortbow(Bow):
+    # Concrete item representing a Maple Shortbow
 
     title = 'Maple Shortbow'
     description = 'Shortbow made from a maple log for firing arrows'
@@ -57,6 +62,7 @@ class MapleShortbow(Bow):
 
 
 class YewShortbow(Bow):
+    # Concrete item representing a Yew Shortbow
 
     title = 'Yew Shortbow'
     description = 'Shortbow made from a yew log for firing arrows'
@@ -69,6 +75,7 @@ class YewShortbow(Bow):
 
 
 class MagicShortbow(Bow):
+    # Concrete item representing a Magic Shortbow
 
     title = 'Magic Shortbow'
     description = 'Shortbow made from a magic log for firing arrows'
@@ -81,7 +88,7 @@ class MagicShortbow(Bow):
 
 
 class Resource(Item):
-    # Abstract class for the general resource item. Will have multiple abstract subclasses for more specific resources,
+    # Abstract class for all resource items. Will have multiple abstract subclasses for more specific resources,
     # e.g. Log or Ore, which in turn have subclasses that can be instantiated, e.g. Resource -> Log -> Oak Log
 
     def __init__(self):
@@ -89,14 +96,14 @@ class Resource(Item):
 
 
 class Log(Resource):
-    # Abstract class to be subclassed by all instantiable Log type, e.g. Oak Logs, Willow Logs, etc.
+    # Abstract class to be subclassed by all instantiable Log types, e.g. Oak Logs, Willow Logs, etc.
 
     def __init__(self):
         super().__init__()
 
 
 class OakLog(Log):
-    # Concrete instantiable log type for an Oak Log item
+    # Concrete log item for an Oak Log
 
     title = 'Oak Log'
     description = 'Oak log obtained from chopping an oak tree with an axe'
@@ -112,7 +119,7 @@ class OakLog(Log):
 
 
 class WillowLog(Log):
-    # Concrete instantiable log type for a Willow Log item
+    # Concrete log item for a Willow Log
 
     title = 'Willow Log'
     description = 'Willow log obtained from chopping a willow tree with an axe'
@@ -128,7 +135,7 @@ class WillowLog(Log):
 
 
 class MapleLog(Log):
-    # Concrete instantiable log type for a Maple Log item
+    # Concrete log item for a Maple Log
 
     title = 'Maple Log'
     description = 'Maple log obtained from chopping a maple tree with an axe'
@@ -144,6 +151,7 @@ class MapleLog(Log):
 
 
 class YewLog(Log):
+    # Concrete log item for an Yew Log
 
     title = 'Yew Log'
     description = 'Yew log obtained from chopping a yew tree with an axe'
@@ -159,6 +167,7 @@ class YewLog(Log):
 
 
 class MagicLog(Log):
+    # Concrete log item for a Magic Log
 
     title = 'Magic Log'
     description = 'Magic Log obtained from chopping a magic tree with an axe'
@@ -181,7 +190,7 @@ class Ore(Resource):
 
 
 class CopperOre(Ore):
-    # Concrete instantiable ore type for a Copper Ore item
+    # Concrete ore item for Copper Ore
 
     title = 'Copper Ore'
     description = 'Copper ore obtained from mining a copper ore rock with a pickaxe'
@@ -194,7 +203,7 @@ class CopperOre(Ore):
 
 
 class TinOre(Ore):
-    # Concrete instantiable ore type for a Tin Ore item
+    # Concrete ore item for Tin Ore
 
     title = 'Tin Ore'
     description = 'Tin ore obtained from mining a tin ore rock using a pickaxe'
@@ -207,7 +216,7 @@ class TinOre(Ore):
 
 
 class CoalOre(Ore):
-    # Concrete instantiable ore type for a Coal Ore item
+    # Concrete ore item for Coal Ore
 
     title = 'Coal Ore'
     description = 'Coal ore obtained from mining a coal rock using a pickaxe'
@@ -220,7 +229,7 @@ class CoalOre(Ore):
 
 
 class IronOre(Ore):
-    # Concrete instantiable ore type for an Iron Ore item
+    # Concrete ore item for Iron Ore
 
     title = 'Iron Ore'
     description = 'Iron ore obtained from mining an iron ore rock using a pickaxe'
@@ -233,6 +242,7 @@ class IronOre(Ore):
 
 
 class GoldOre(Ore):
+    # Concrete ore item for Gold Ore
 
     title = 'Gold Ore'
     description = 'Gold ore obtained from mining a gold rock using a pickaxe'
@@ -245,17 +255,17 @@ class GoldOre(Ore):
 
 
 class Tool(Item):
-    # Abstract class for the general tool item. Will have multiple abstract subclasses for more specific tools, e.g. Axe
+    # Abstract class for tool items. Will have multiple abstract subclasses for more specific tools, e.g. Axe
 
     def __init__(self):
         super().__init__()
 
-    def process(self, skills, resource, visible_map):
-        # If we use a tool on a resource (or vica-versa) in the inventory, we want to try and process it
+    def use_on_resource_item(self, skills, resource, visible_map):
+        # If we use a tool on a resource (or vica-versa) in the inventory, we want to try and combine them
         # Obviously not all combinations make sense (e.g. tinderbox on an ore?!), so most of the combinations won't
         # do anything. This is the purpose of this function.
         # If we overwrite this function in a subclass, we will handle the interaction there,
-        # otherwise assume the tool cannot be used to process a resource and fails to combine
+        # otherwise assume the tool cannot be used on a resource and fails to combine
 
         return {
             'success': False,
@@ -264,19 +274,19 @@ class Tool(Item):
 
 
 class Tinderbox(Tool):
+    # Concrete tool item for Tinderbox
 
     title = 'Tinderbox'
     description = 'Tinderbox for lighting logs'
     path_to_icon = 'images/tinderbox.jpg'
-    # Placeholder for skill information widget - we can always use a tinderbox, we never really check if >= 1 firemaking
-    skill_level_required = 1
+    skill_level_required = 1  # We can always use a tinderbox, we never really check if >= 1 firemaking
     sell_price = 10
     buy_price = 100
 
     def __init__(self):
         super().__init__()
 
-    def process(self, skills, resource, visible_map):
+    def use_on_resource_item(self, skills, resource, visible_map):
 
         # Check we're trying to use the tinderbox on a log
         if not isinstance(resource, Log):
@@ -319,19 +329,19 @@ class Tinderbox(Tool):
 
 
 class Knife(Tool):
+    # Concrete tool item for Knife
 
     title = 'Knife'
     description = 'Knife for shaping logs into items like bows'
     path_to_icon = 'images/knife.jpg'
-    # Placeholder for skill information widget - we can always use a knife, we never really check if >= 1 fletching
-    skill_level_required = 1
+    skill_level_required = 1  # we can always use a knife, we never really check if >= 1 fletching
     sell_price = 10
     buy_price = 75
 
     def __init__(self):
         super().__init__()
 
-    def process(self, skills, resource, visible_map):
+    def use_on_resource_item(self, skills, resource, visible_map):
 
         # Check we're trying to use a knife on a log
         if not isinstance(resource, Log):
@@ -382,7 +392,7 @@ class Axe(Tool):
 
 
 class CopperAxe(Axe):
-    # Concrete class representing a Copper Axe, the simplest axe
+    # Concrete axe item for Copper Axe
 
     title = 'Copper Axe'
     description = 'Copper Axe for chopping down trees'
@@ -397,7 +407,7 @@ class CopperAxe(Axe):
 
 
 class SteelAxe(Axe):
-    # Concrete class representing a steel axe, a better axe than the copper variant
+    # Concrete axe item for Steel Axe
 
     title = 'Steel Axe'
     description = 'Steel Axe for chopping down trees'
@@ -412,7 +422,7 @@ class SteelAxe(Axe):
 
 
 class MithrilAxe(Axe):
-    # Concrete class representing a mithril axe, a better axe than the steel variant
+    # Concrete axe item for Mithril Axe
 
     title = 'Mithril Axe'
     description = 'Mithril Axe for chopping down trees'
@@ -427,6 +437,7 @@ class MithrilAxe(Axe):
 
 
 class AdamantAxe(Axe):
+    # Concrete axe item for Adamant Axe
 
     title = 'Adamant Axe'
     description = 'Adamant Axe for chopping down trees'
@@ -448,7 +459,7 @@ class Pickaxe(Tool):
 
 
 class CopperPickaxe(Pickaxe):
-    # Concrete class representing a Copper Pickaxe, the simplest type of Pickaxe
+    # Concrete pickaxe item for Copper pickaxe
 
     title = 'Copper Pickaxe'
     description = 'Copper Pickaxe for mining rocks'
@@ -463,7 +474,7 @@ class CopperPickaxe(Pickaxe):
 
 
 class SteelPickaxe(Pickaxe):
-    # Concrete class representing a steel pickaxe, a better variant than the copper pickaxe
+    # Concrete pickaxe item for Steel pickaxe
 
     title = 'Steel Pickaxe'
     description = 'Steel Pickaxe for mining rocks'
@@ -478,7 +489,7 @@ class SteelPickaxe(Pickaxe):
 
 
 class MithrilPickaxe(Pickaxe):
-    # Concrete class representing a mithril pickaxe, a better variant of pickaxe than the steel variant
+    # Concrete pickaxe item for Mithril pickaxe
 
     title = 'Mithril Pickaxe'
     description = 'Mithril Pickaxe for mining rocks'
@@ -493,6 +504,7 @@ class MithrilPickaxe(Pickaxe):
 
 
 class AdamantPickaxe(Pickaxe):
+    # Concrete pickaxe item for Adamant pickaxe
 
     title = 'Adamant Pickaxe'
     description = 'Adamant Pickaxe for mining rocks'

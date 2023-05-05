@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QPushButt
 
 
 class SkillInformation(QWidget):
-    # A widget that displays when we click on a skill in the skill set display, one for each skill type
-    # On clicking it will replace the map widget until we press the close button
+    # A widget that displays when we click on a skill in the skills widget, one for each skill type
+    # On clicking it will replace the main game display widget until we press the close button/press ESC
 
     def __init__(self, skill):
         # `skill` is a reference to a class type, a skill: Woodcutting, Mining, etc.

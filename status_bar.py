@@ -3,11 +3,9 @@ from PyQt5.QtWidgets import QLabel
 
 
 class StatusBar(QLabel):
-    # Label widget for the text display underneath the game map widget
-    # Signal in Game object connects to this label to update whenever anything notable happens
-    # Removes status string whenever we interact with the game and nothing notable happened, to remove previous status
-    # E.g. if we update with "level gained", on the next chop if we don't gain a level remove the previous status
-    # This is achieved by adding a signal.emit("") tto all entry points for interactions with the game (click/key press)
+    # Text widget for the text display underneath the main game's display widget
+    # In most of the code we pass around a reference to a signal `status_bar_signal`
+    # which when emitted on with a str will update the text of this bar
 
     def __init__(self):
 
@@ -25,6 +23,5 @@ class StatusBar(QLabel):
 
     def update_status_bar(self, text):
         # Slot for signals emitted when status bar text needs to change
-        # OR be reset to empty string
 
         self.setText(text)

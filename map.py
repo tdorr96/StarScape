@@ -7,6 +7,7 @@ from tiles import code_to_feature, EmptyTile, ShopTile, Interactable, BankChestT
 
 class Map(QWidget):
     # The largest widget on the right-hand panel, that displays the game we move around in and interact with
+    # There can be multiple instances of this Map class, for each map we define a json for, each the surface, or a cave
 
     # Signals emitted whenever we want to change the game display panel to:
     bank_clicked = pyqtSignal()          # - the (only) bank widget, by clicking on bank chest tile
@@ -31,9 +32,9 @@ class Map(QWidget):
         with open(path_to_map_json, 'r') as open_f:
             loaded_map = json.load(open_f)
 
-        # The map is a large grid, and we store all the tiles in a list of lists `self.map`,
+        # The map is a large grid, and we store all the instantiated tiles in a list of lists `self.map`,
         # Index into list of lists as `self.map[y][x]`
-        # All coordinates (tiles access, calculating distances, etc.) done wrt. `self.map`, i.e. absolute coordinates
+        # All coordinates (tile access, calculating distances, etc.) done wrt. `self.map`, i.e. absolute coordinates
         # .x and .y values of the tile objects are kept in sync with the index into where they are stored in `self.map`
         # We visually display a window around player, `self.player_window`, which is a grid layout
         # We re-draw this window grid layout any time visible tiles change, examples:
@@ -49,7 +50,7 @@ class Map(QWidget):
         # The absolute map coordinates are mapped to grid coordinates when we redraw, and here only - any other time
         # all coordinates are done in terms of absolute on the whole map
         # If we get to the boundary of the map and there isn't enough tiles around player to centre the player,
-        # take a window number of tiles from map boundary
+        # take a window number of tiles from the map boundary
 
         self.map = []
         self.map_rows = loaded_map['total']['height']
@@ -60,15 +61,18 @@ class Map(QWidget):
 
         # We do not handle window heights or widths larger than that of the map, e.g. very narrow long corridor
         # Would need some sort of placeholder padding around map that we cannot move onto or put things on
-        assert self.window_cols <= self.map_cols
-        assert self.window_rows <= self.map_rows
+        # Checking >= 3 means there is at least one tile either side of player in window
+        assert 3 <= self.window_cols <= self.map_cols
+        assert 3 <= self.window_rows <= self.map_rows
 
-        # Assume window sizes are odd so it's even number of grids outside of player
+        # Assume window sizes are odd so it's even number of grids around player so the player is centered
         assert self.window_cols % 2 == 1
         assert self.window_rows % 2 == 1
 
         # There needs to be `window_rows` x `window_cols` tiles filling the widget display, hence the size as follows
         # All the tiles in the map need to have this width and height, but we only display the window amount
+        # This way whatever tiles the window is over, they are the right size ready to be displayed, and don't need
+        # drawing or re-sizing
         self.tile_width = int(self.width/self.window_cols)
         self.tile_height = int(self.height/self.window_rows)
 
@@ -78,11 +82,12 @@ class Map(QWidget):
 
         self.background_color = loaded_map['background_color']
 
-        # Maps by default have no player, we only add them either on init to the surface map,
-        # or when transporting between maps (also remove from the map we transported from)
+        # Maps by default have no player, we only add a player either:
+        # - at the start of game to the surface map,
+        # - or when transporting between maps (also remove from the map we transported from)
         self.player = None
 
-        # Accumulates all the shop instances in the game, for Game object to access for the stacked game layout
+        # Accumulates all the shop instances in this map
         self.shops = []
 
         # Create the grid layout for the visible window around player we will display as this widget's layout
@@ -92,10 +97,10 @@ class Map(QWidget):
         self.setLayout(self.player_window)
 
         # Set to True once we've drawn for the first time
-        # This is so we only remove from player window grid once we've drawn for the first time and it has elements
+        # On first draw of the window we only want to add tiles, not remove - there was nothing added
         self.drawn_initially = False
 
-        # Populate the list of lists of tiles: the map
+        # Populate the list of lists of tiles - the map - based on JSON specification for this map
 
         assert len(loaded_map['map']) == self.map_rows
 
@@ -110,6 +115,7 @@ class Map(QWidget):
                 if col:
                     # There is text in the column, e.g. 'WT' = Willow Tree, 'GS' = General Shop, 'BC' = Bank Chest
                     # Use mapping from scenery code to type of that tile, then instantiate and add to map
+                    # Different tile objects have different signals & slots that need connecting
 
                     if ':' in col:
                         # It's a transport tile, e.g. 'CEntrance:cave:x:y', or 'CExit:surface:x:y'
@@ -173,10 +179,12 @@ class Map(QWidget):
         assert(len(self.map)) == self.map_rows
 
     def calculate_window_range(self):
-        # Calculate the square grid defining the window we display in the game map
+        # Calculate the square grid around the player defining the window we display in the game map widget
         # Need to cap at the boundaries if window around player would extend past a map border
+        # Return the absolute coordinates with respect to the list of lists `self.map`
 
         # We only ever want to draw a window around player if this map has a player on it
+        # As only the map that is visible has the player on it
         assert self.player is not None
 
         # Work out the row range
@@ -217,14 +225,13 @@ class Map(QWidget):
 
     def redraw(self):
         # Populate the grid's layout with a window around player
-        # Need to handle edge cases: if player near boundary and window would extend past: stop at boundary edge
-        # We are assuming window fits within or fits exactly to map size (assert in init function)
 
         # We only ever want to draw a window around player if this map has a player on it
+        # As only the map that is visible has the player on it
         assert self.player is not None
 
         # Remove all current grid items from grid layout to draw from scratch again
-        # (if not drawing for the first time - empty grid to start with!)
+        # (if not drawing for the first time - empty grid to start with has nothing to remove!)
         if self.drawn_initially:
             for window_row in range(self.window_rows):
                 for window_col in range(self.window_cols):
@@ -235,13 +242,14 @@ class Map(QWidget):
                             grid_item.widget().setParent(None)
                             grid_item.widget().hide()
 
-        # Add the widgets in the new window back to the grid
-        # We need to map from the absolute coordinates of `self.map` to the grid coordinates of `self.player_window`
-
+        # `calculate_window_range()` handles the edge cases associated with player window capping at map boundaries
         col_range, row_range = self.calculate_window_range()
 
         assert len(col_range) == self.window_cols
         assert len(row_range) == self.window_rows
+
+        # Add the widgets in the new window back to the grid
+        # We need to map from the absolute coordinates of `self.map` to the grid coordinates of `self.player_window`
 
         top_left_x = col_range[0]
         top_left_y = row_range[0]
@@ -256,7 +264,7 @@ class Map(QWidget):
                 self.map[row_index][col_index].show()
 
         if not self.drawn_initially:
-            # If we've drawn for first time, from now on we need to remove all the items in grid on every re-draw
+            # If we've now drawn for first time, from now on we need to remove all the items in grid on every re-draw
             self.drawn_initially = True
 
     def get_surroundings(self, x, y):
@@ -278,7 +286,7 @@ class Map(QWidget):
 
     def interactable_clicked_on(self, x, y):
         # Signal emitted from the tiles with `.clicked` pyqtSignals: Interactable, ShopTile, BankChestTile, etc.
-        # The x and y coordinates refer to the absolute coordinates of `self.map`
+        # The x and y coordinates refer to the tile clicked on in terms of absolute coordinates in `self.map`
 
         # We should only have clicked on the map if the player was on it
         assert self.player is not None
@@ -304,7 +312,8 @@ class Map(QWidget):
             self.bank_clicked.emit()
 
         elif isinstance(tile, TransportTile):
-            # We clicked on a transport tile, emit a signal with the string representing where we are transporting to
+            # We clicked on a transport tile, emit a signal with the location where we are transporting to
+            # Location of where we are transporting to is defined by name of map and coordinates on that map
             # The main Game object has a mapping from map string names to Map objects
             # Some transport tiles will have skill requirements - check we meet all these first
             if self.skills.meets_requirements(tile.skill_requirements):
@@ -320,9 +329,9 @@ class Map(QWidget):
             tile.interact(self.inventory, self.skills)
 
     def swap_tile_positions(self, x1, y1, x2, y2):
-        # Takes coordinates to two item positions in the map
-        # Swaps them in map list of lists,
-        # and updates x and y class variables of underlying tiles to represent the change
+        # Takes coordinates to two tile positions in the map
+        # Swaps them in map list of lists, and updates x and y class variables of underlying tiles to represent change,
+        # and keep up to date with self.map indexing
         # Make sure to redraw() after call to this function if they are within the player's visible window
 
         tile1 = self.map[y1][x1]
@@ -335,6 +344,9 @@ class Map(QWidget):
         self.map[y2] = self.map[y2][:x2] + [tile1] + self.map[y2][x2+1:]
 
     def on_key_press_event(self, key_int):
+        # This slot is emitted to from main Game object when we press a key and this map was visible in stacked layout
+        # Game already checked which key was pressed before emitting, so guaranteed to be one of the four arrow keys
+        # Therefore this function is responsible for moving a player one tile (if we can)
 
         # Should only have emitted to this slot if player was on it and the map was visible
         assert self.player is not None
@@ -373,7 +385,7 @@ class Map(QWidget):
             adjacent_widget = self.map[current_y][current_x+1]
 
         # Now we know we're not trying to move past boundary, see if the adjacent tile is empty and if so move
-        # To move, we swap the tiles (i.e. position in map and underlying tile coordinates),
+        # To move player, we swap the tiles (i.e. position in map and underlying tile coordinates),
         # and then re-draw display window
 
         if isinstance(adjacent_widget, EmptyTile):
@@ -452,11 +464,16 @@ class Map(QWidget):
             self.redraw()
 
     def can_insert_player(self, x, y):
+        # We can insert a player in this map at coordinates (x, y) if it is an empty tile
+        # Might not always be possible e.g. if there is a fire waiting to die out, or an NPC on the tile,
+        # in which case we might be able to insert after a few more seconds
 
         return isinstance(self.map[y][x], EmptyTile)
 
     def insert_player(self, x, y):
+        # We are inserting the player into this map and making it the active visible map the player will interact on
 
+        assert self.player is None
         assert self.can_insert_player(x, y)
 
         self.player = Player(
@@ -474,6 +491,7 @@ class Map(QWidget):
         self.redraw()
 
     def remove_player(self):
+        # We are moving player to another map, so close its tile in this one & set player reference in this map to None
 
         assert self.player is not None
 
@@ -489,7 +507,7 @@ class Map(QWidget):
         self.player = None
 
     def can_light_fire(self):
-        # To light a fire we move to the right after lighting it
+        # To light a fire (i.e. tinderbox on a log) we move to the right after lighting it
         # We can only light one if:
         # - there is an empty slot to the right
         # - we are not on the far-right border
@@ -512,6 +530,7 @@ class Map(QWidget):
 
     def light_fire(self, ticks_for_fire_to_disappear):
         # Swap player tile and tile to right, then replace the swapped empty tile with a Fire tile
+        # Connect timer signal to the fire tile so we can emit when it's time runs out to remove from the map
 
         assert self.can_light_fire()
 
@@ -541,7 +560,7 @@ class Map(QWidget):
         self.redraw()
 
     def remove_fire(self, x, y):
-        # Slot emitted to when a fire times out
+        # This is the slot emitted to when a fire times out and we need to remove from the map
         # Does not have to be the map the player is currently on
 
         fire = self.map[y][x]
